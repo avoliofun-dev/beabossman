@@ -2,9 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig,
-  getCurrentUser, signIn, signUp, signOutUser
+  getCurrentUser, signIn, signUp, signOutUser,
+  saveGameStateToCloud, loadGameStateFromCloud
 } from '../lib/supabase.js';
+import { S, setS, save, rp } from '../game/state.js';
 import { log, notifyUI } from '../game/engine.js';
+import { updateThemeColors } from '../game/scene3d.js';
 import { audio } from '../game/audio.js';
 import Icon from './Icon.jsx';
 
@@ -12,6 +15,7 @@ export default function AuthModal({ onClose }) {
   const [tab, setTab] = useState('login'); // 'login' | 'register' | 'config'
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [cloudInfo, setCloudInfo] = useState(null);
   const [msg, setMsg] = useState({ text: '', type: '' });
 
   // Form states
@@ -28,13 +32,23 @@ export default function AuthModal({ onClose }) {
   }, []);
 
   const checkUser = async () => {
-    const u = await getCurrentUser();
-    setUser(u);
+    try {
+      const u = await getCurrentUser();
+      setUser(u);
+      if (u) {
+        const cloudData = await loadGameStateFromCloud();
+        setCloudInfo(cloudData);
+      } else {
+        setCloudInfo(null);
+      }
+    } catch (e) {
+      console.warn('Error checkUser:', e);
+    }
   };
 
   const showMsg = (text, type = 'info') => {
     setMsg({ text, type });
-    setTimeout(() => setMsg({ text: '', type: '' }), 4000);
+    setTimeout(() => setMsg({ text: '', type: '' }), 5000);
   };
 
   const handleLogin = async (e) => {
@@ -45,8 +59,18 @@ export default function AuthModal({ onClose }) {
       await signIn(email, password);
       audio.playLevelUp();
       log('Berhasil masuk dengan akun cloud!');
-      await checkUser();
-      showMsg('Berhasil masuk! Progres kini tersinkronisasi.', 'success');
+      const u = await getCurrentUser();
+      setUser(u);
+      const cloudData = await loadGameStateFromCloud();
+      setCloudInfo(cloudData);
+
+      if (cloudData?.state) {
+        showMsg(`Berhasil masuk! Ditemukan data studio "${cloudData.state.co}" di cloud.`, 'info');
+      } else if (S) {
+        // Belum ada data di cloud, otomatis unggah data lokal saat ini
+        await saveGameStateToCloud(S);
+        showMsg('Berhasil masuk! Progres lokal Anda berhasil disimpan ke cloud.', 'success');
+      }
       notifyUI();
     } catch (err) {
       showMsg(err.message || 'Gagal login. Periksa email dan kata sandi.', 'error');
@@ -63,8 +87,14 @@ export default function AuthModal({ onClose }) {
       await signUp(email, password);
       audio.playLevelUp();
       log('Akun berhasil dibuat!');
-      await checkUser();
-      showMsg('Akun dibuat! Silakan cek email jika butuh verifikasi.', 'success');
+      const u = await getCurrentUser();
+      setUser(u);
+      if (S) {
+        await saveGameStateToCloud(S);
+      }
+      const cloudData = await loadGameStateFromCloud();
+      setCloudInfo(cloudData);
+      showMsg('Akun dibuat & progres langsung disinkronkan ke cloud!', 'success');
       notifyUI();
     } catch (err) {
       showMsg(err.message || 'Gagal mendaftar.', 'error');
@@ -76,10 +106,56 @@ export default function AuthModal({ onClose }) {
   const handleLogout = async () => {
     await signOutUser();
     setUser(null);
+    setCloudInfo(null);
     audio.playClick();
     log('Keluar dari akun cloud.');
     showMsg('Anda telah keluar dari akun cloud.', 'info');
     notifyUI();
+  };
+
+  const handleManualSaveToCloud = async () => {
+    if (!S) return;
+    setLoading(true);
+    try {
+      const res = await saveGameStateToCloud(S);
+      setCloudInfo(prev => ({
+        ...prev,
+        state: S,
+        lastSaved: res.timestamp
+      }));
+      audio.playCoin();
+      log('Progres studio berhasil diunggah ke cloud Supabase!');
+      showMsg('Progres berhasil disimpan ke Cloud Supabase!', 'success');
+    } catch (err) {
+      showMsg(err.message || 'Gagal menyimpan ke cloud.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualLoadFromCloud = async () => {
+    setLoading(true);
+    try {
+      const cloudData = await loadGameStateFromCloud();
+      if (!cloudData?.state) {
+        showMsg('Belum ada data tersimpan di akun cloud ini.', 'error');
+        return;
+      }
+      setS(cloudData.state);
+      save(); // simpan juga ke local storage
+      if (cloudData.state.th) {
+        updateThemeColors(cloudData.state.th);
+      }
+      setCloudInfo(cloudData);
+      audio.playLevelUp();
+      log(`Progres studio "${cloudData.state.co}" berhasil dimuat dari cloud!`);
+      showMsg('Progres studio berhasil dimuat dari cloud!', 'success');
+      notifyUI();
+    } catch (err) {
+      showMsg(err.message || 'Gagal memuat dari cloud.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSaveConfig = (e) => {
@@ -91,6 +167,17 @@ export default function AuthModal({ onClose }) {
   };
 
   const configured = isSupabaseConfigured();
+
+  const formatTime = (iso) => {
+    if (!iso) return 'Belum pernah';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ', ' +
+             d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch (e) {
+      return iso;
+    }
+  };
 
   return (
     <div id="w-auth" className="win glass">
@@ -104,6 +191,21 @@ export default function AuthModal({ onClose }) {
         </button>
       </div>
 
+      {msg.text && (
+        <div
+          className="card"
+          style={{
+            margin: '8px 0',
+            padding: '8px 12px',
+            fontSize: '12px',
+            borderColor: msg.type === 'error' ? 'var(--dg)' : msg.type === 'success' ? 'var(--gd)' : 'var(--ac)',
+            color: msg.type === 'error' ? 'var(--dg)' : msg.type === 'success' ? 'var(--gd)' : 'var(--ink)'
+          }}
+        >
+          {msg.text}
+        </div>
+      )}
+
       {user ? (
         <div style={{ padding: '8px 0' }}>
           <div className="card ct" style={{ background: 'var(--gd-subtle)', borderColor: 'var(--gd)' }}>
@@ -112,23 +214,54 @@ export default function AuthModal({ onClose }) {
               <br />
               <small>{user.email}</small>
             </div>
-            <span className="bd g">Aktif</span>
+            <span className="bd g">Aktif &amp; Auto-Sync</span>
           </div>
 
           <div className="card" style={{ marginTop: '12px' }}>
-            <b>Status Sinkronisasi</b>
-            <p>
-              <small>
-                Progres studio Anda kini tersimpan aman di server database Supabase. Anda dapat melanjutkan permainan ini dari browser atau perangkat lain.
-              </small>
-            </p>
+            <b style={{ fontSize: '13px' }}>Progres di Cloud</b>
+            {cloudInfo?.state ? (
+              <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--mu)', lineHeight: 1.5 }}>
+                <div>🏢 Studio: <strong>{cloudInfo.state.co}</strong></div>
+                <div>💰 Kas: <strong>{rp(cloudInfo.state.cash || 0)}</strong> · Reputasi: <strong>{cloudInfo.state.rep || 0}</strong></div>
+                <div>🕒 Terakhir Disimpan: <strong>{formatTime(cloudInfo.lastSaved)}</strong></div>
+              </div>
+            ) : (
+              <p style={{ margin: '6px 0', fontSize: '12px', color: 'var(--mu)' }}>
+                Belum ada studio yang disimpan di cloud. Klik tombol simpan di bawah untuk mengunggah progres saat ini.
+              </p>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="p"
+                style={{ flex: '1 1 140px' }}
+                disabled={loading || !S}
+                onClick={handleManualSaveToCloud}
+              >
+                {loading ? 'Menyimpan...' : '☁️ Simpan ke Cloud'}
+              </button>
+
+              <button
+                type="button"
+                style={{ flex: '1 1 140px' }}
+                disabled={loading || !cloudInfo?.state}
+                onClick={handleManualLoadFromCloud}
+              >
+                📥 Muat dari Cloud
+              </button>
+            </div>
+          </div>
+
+          <div className="card" style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <small style={{ color: 'var(--mu)' }}>Mode Auto-Sync otomatis menyimpan setiap ada kemajuan.</small>
             <button
               type="button"
               className="danger"
-              style={{ marginTop: '8px' }}
+              style={{ padding: '4px 10px', fontSize: '12px' }}
               onClick={handleLogout}
             >
-              Keluar (Logout)
+              Keluar
             </button>
           </div>
         </div>

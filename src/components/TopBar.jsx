@@ -1,11 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { S, rp, rate, PC } from '../game/state.js';
 import { audio } from '../game/audio.js';
+import { getCurrentUser } from '../lib/supabase.js';
 import Icon from './Icon.jsx';
 
 export default function TopBar({ onOpenAuth }) {
   if (!S) return null;
   const [muted, setMuted] = useState(audio.isMuted());
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    getCurrentUser().then(u => setUser(u));
+  }, []);
+
   const founder = S.emp[0];
   const founderCol = founder ? '#' + ('000000' + founder.col.toString(16)).slice(-6) : '#2563eb';
   const unlockedPc = Object.keys(S.pc || {}).length;
@@ -50,10 +57,26 @@ export default function TopBar({ onOpenAuth }) {
           type="button"
           className="snd-btn"
           onClick={onOpenAuth}
-          title="Akun &amp; Cloud Sync Supabase"
-          aria-label="Akun &amp; Cloud Sync Supabase"
+          title={user ? `Cloud Sync Aktif (${user.email})` : 'Akun & Cloud Sync Supabase'}
+          aria-label="Akun & Cloud Sync Supabase"
+          style={{ position: 'relative' }}
         >
           ☁️
+          {user && (
+            <span
+              style={{
+                position: 'absolute',
+                bottom: '3px',
+                right: '3px',
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--gd, #10b981)',
+                border: '1.5px solid #fff'
+              }}
+              title="Cloud Sync Aktif"
+            />
+          )}
         </button>
         <button
           type="button"

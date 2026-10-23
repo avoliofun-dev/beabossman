@@ -1,5 +1,6 @@
 // src/game/state.js
 // Logika game, konstanta, dan state S
+import { triggerAutoCloudSave } from '../lib/supabase.js';
 
 export const KEY = 'ktycoon_mvp2';
 export const BID = ['Konten', 'Desain', 'Video', 'Sosmed', 'Data'];
@@ -241,6 +242,7 @@ export function load() {
 export function save() {
   try {
     localStorage.setItem(KEY, JSON.stringify(S));
+    if (S) triggerAutoCloudSave(S);
   } catch (e) {}
 }
 
