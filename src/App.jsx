@@ -11,7 +11,9 @@ import ContractsWindow from './components/ContractsWindow.jsx';
 import TeamWindow from './components/TeamWindow.jsx';
 import NotificationsWindow from './components/NotificationsWindow.jsx';
 import SettingsWindow from './components/SettingsWindow.jsx';
+import AuthModal from './components/AuthModal.jsx';
 import IntroScreen from './components/IntroScreen.jsx';
+
 
 import { S, save } from './game/state.js';
 import { initGame, tick, subscribeUI, toast } from './game/engine.js';
@@ -104,7 +106,7 @@ export default function App() {
 
       {!showIntro && (
         <>
-          <TopBar />
+          <TopBar onOpenAuth={() => toggleWin('auth')} />
           <SideMenu
             openWin={openWin}
             toggleWin={toggleWin}
@@ -134,6 +136,7 @@ export default function App() {
           {openWin === 'ct' && <ContractsWindow onClose={() => toggleWin('')} />}
           {openWin === 'tm' && <TeamWindow onClose={() => toggleWin('')} />}
           {openWin === 'lg' && <NotificationsWindow onClose={() => toggleWin('')} />}
+          {openWin === 'auth' && <AuthModal onClose={() => toggleWin('')} />}
           {openWin === 'st' && (
             <SettingsWindow
               onClose={() => toggleWin('')}
@@ -143,6 +146,7 @@ export default function App() {
           )}
         </>
       )}
+
 
       {showIntro && <IntroScreen onStart={() => setShowIntro(false)} />}
     </>

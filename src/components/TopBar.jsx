@@ -3,7 +3,7 @@ import { S, rp, rate, PC } from '../game/state.js';
 import { audio } from '../game/audio.js';
 import Icon from './Icon.jsx';
 
-export default function TopBar() {
+export default function TopBar({ onOpenAuth }) {
   if (!S) return null;
   const [muted, setMuted] = useState(audio.isMuted());
   const founder = S.emp[0];
@@ -45,7 +45,16 @@ export default function TopBar() {
           </small>
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <button
+          type="button"
+          className="snd-btn"
+          onClick={onOpenAuth}
+          title="Akun &amp; Cloud Sync Supabase"
+          aria-label="Akun &amp; Cloud Sync Supabase"
+        >
+          ☁️
+        </button>
         <button
           type="button"
           className="snd-btn"
@@ -63,4 +72,5 @@ export default function TopBar() {
     </div>
   );
 }
+
 
