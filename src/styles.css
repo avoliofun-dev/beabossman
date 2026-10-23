@@ -889,6 +889,14 @@ body.hu #tut {
   border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
+/* Floating Pop Feedback Layer */
+.pops-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 12;
+}
+
 /* Floating Pop Feedback (Coins, XP, Level Up) */
 .pop {
   position: absolute;

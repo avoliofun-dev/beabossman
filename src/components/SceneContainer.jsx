@@ -43,14 +43,19 @@ export default function SceneContainer() {
   };
 
   return (
-    <div id="scene" ref={sceneRef}>
-      {/* Floating Pops Feedback */}
-      {pops.map(p => (
-        <div key={p.id} className="pop">
-          <span>🪙</span>
-          <span>{p.text}</span>
-        </div>
-      ))}
+    <>
+      {/* Three.js canvas container - HARUS SELALU KOSONG agar tidak konflik dengan rekonsiliasi DOM React */}
+      <div id="scene" ref={sceneRef} />
+
+      {/* Layer Feedback Pop Koin / XP - Terpisah dari kontainer 3D */}
+      <div className="pops-layer">
+        {pops.map(p => (
+          <div key={p.id} className="pop">
+            <span>🪙</span>
+            <span>{p.text}</span>
+          </div>
+        ))}
+      </div>
 
       {/* Floating Ergonomic Camera HUD */}
       <div className="cam-hud" data-ui="1">
@@ -63,6 +68,6 @@ export default function SceneContainer() {
           <button type="button" title="Fokus Lantai 2" onClick={() => handleView('lt2')}>🏢</button>
         )}
       </div>
-    </div>
+    </>
   );
 }
