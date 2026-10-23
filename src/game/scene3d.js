@@ -131,7 +131,7 @@ export function build(off) {
       B(0.1, 0.9, 0.1, 0x6b5a45, o[0], 0.45, o[1], g);
     });
     B(1, 0.65, 0.06, 0x1c2430, 0, 1.5, 1.5, g);
-    B(0.9, 0.55, 0.02, 0x7ec8ff, 0, 1.5, 1.46, g);
+    g.screen = B(0.9, 0.55, 0.02, 0x1a2634, 0, 1.5, 1.46, g);
     B(0.8, 0.1, 0.8, 0x2c3340, 0, 0.45, -0.05, g);
     B(0.8, 0.8, 0.1, 0x2c3340, 0, 0.9, -0.4, g);
   });
@@ -181,6 +181,57 @@ export function build(off) {
   return true;
 }
 
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function makeBubbleSprite() {
+  var cv = document.createElement('canvas');
+  cv.width = 128;
+  cv.height = 64;
+  var tx = new THREE.CanvasTexture(cv);
+  var mat = new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false });
+  var sp = new THREE.Sprite(mat);
+  sp.scale.set(1.3, 0.65, 1);
+  sp.position.set(0, 2.7, 0);
+  return { sp: sp, cv: cv, ctx: cv.getContext('2d'), tx: tx, lastTxt: '', lastBg: '' };
+}
+
+function drawBubble(bb, text, bg, fg) {
+  if (bb.lastTxt === text && bb.lastBg === bg) return;
+  bb.lastTxt = text;
+  bb.lastBg = bg;
+  var ctx = bb.ctx;
+  ctx.clearRect(0, 0, 128, 64);
+  if (!text) {
+    bb.tx.needsUpdate = true;
+    return;
+  }
+  ctx.fillStyle = bg || 'rgba(15, 23, 42, 0.88)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.lineWidth = 3;
+  roundRectPath(ctx, 8, 8, 112, 48, 20);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = fg || '#ffffff';
+  ctx.font = 'bold 22px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 64, 32);
+  bb.tx.needsUpdate = true;
+}
+
 export function mkW(sh, hr) {
   var wk = new THREE.Group(), sk = 0xf1c27d, pn = 0x3b4a6b, o = { g: wk, k: 1 };
   var hg = new THREE.Group();
@@ -210,6 +261,8 @@ export function mkW(sh, hr) {
   o.cup.visible = false;
   o.ph = B(0.16, 0.26, 0.04, 0x111111, 0, -0.85, 0.16, o.aL);
   o.ph.visible = false;
+  o.bb = makeBubbleSprite();
+  wk.add(o.bb.sp);
   wk.position.set(0, -0.34, 0);
   sc.add(wk);
   return o;
@@ -295,7 +348,24 @@ export function frame(n) {
   last = n;
   rt += dt;
 
-  DK.forEach(function (g, i) { g.visible = !S || i < S.rooms; });
+  DK.forEach(function (g, i) {
+    g.visible = !S || i < S.rooms;
+    if (g.screen) {
+      var workerHere = S && S.emp.find(function (x) { return (x.slot || 0) === i && x.job && !x.rest; });
+      if (workerHere && workerHere.job) {
+        var screenColors = {
+          Konten: 0x38bdf8,
+          Desain: 0xa855f7,
+          Video: 0xf43f5e,
+          Sosmed: 0xf59e0b,
+          Data: 0x10b981
+        };
+        g.screen.material.color.setHex(screenColors[workerHere.job.b] || 0x7ec8ff);
+      } else {
+        g.screen.material.color.setHex(0x1a2634);
+      }
+    }
+  });
   if (S) {
     var tk = S.th || 'agensi';
     if (tk !== lth) { lth = tk; ath(); }
@@ -355,6 +425,25 @@ export function frame(n) {
         }
       }
       o.lL.rotation.x = tl; o.aL.rotation.x = la; o.aR.rotation.x = ra;
+
+      // update dynamic status bubble
+      var bTxt = '', bBg = '';
+      if (work) {
+        var emjs = { Konten: '✍️', Desain: '🎨', Video: '🎬', Sosmed: '📱', Data: '📊' };
+        bTxt = (emjs[work.b] || '💻') + (e.ot ? ' 🔥' : '');
+        bBg = 'rgba(37, 99, 235, 0.9)';
+      } else if (rest) {
+        bTxt = '☕ Zzz';
+        bBg = 'rgba(16, 185, 129, 0.9)';
+      } else if (e.en < 25) {
+        bTxt = '⚡ Lelah';
+        bBg = 'rgba(220, 38, 38, 0.9)';
+      } else if (e.id === S.sel) {
+        bTxt = '⭐';
+        bBg = 'rgba(217, 119, 6, 0.85)';
+      }
+      drawBubble(o.bb, bTxt, bBg);
+      o.bb.sp.position.y = 2.7 + Math.sin(rt * 3 + k) * 0.06;
     });
 
     Object.keys(WK).forEach(function (id) {
