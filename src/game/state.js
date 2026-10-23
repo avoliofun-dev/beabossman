@@ -185,6 +185,7 @@ export function fresh(n) {
   S = {
     th: pth,
     co: n,
+    bio: 'Studio kreatif digital terdepan.',
     cash: 3e5,
     rep: 0,
     done: 0,

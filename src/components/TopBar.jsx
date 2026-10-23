@@ -4,7 +4,7 @@ import { audio } from '../game/audio.js';
 import { getCurrentUser } from '../lib/supabase.js';
 import Icon from './Icon.jsx';
 
-export default function TopBar({ onOpenAuth }) {
+export default function TopBar({ onOpenAuth, onOpenProfile }) {
   if (!S) return null;
   const [muted, setMuted] = useState(audio.isMuted());
   const [user, setUser] = useState(null);
@@ -24,7 +24,11 @@ export default function TopBar({ onOpenAuth }) {
 
   return (
     <div id="top" className="glass">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+        onClick={onOpenProfile}
+        title="Klik untuk Edit Profil Member & Studio"
+      >
         <div
           style={{
             width: '34px',
@@ -41,12 +45,15 @@ export default function TopBar({ onOpenAuth }) {
             border: '2px solid rgba(255,255,255,0.4)',
             flexShrink: 0
           }}
-          title={`Pendiri: ${founder ? founder.nm : 'Kamu'}`}
+          title={`Profil: ${founder ? founder.nm : 'Kamu'} (Klik untuk Edit)`}
         >
           {founder ? founder.nm.charAt(0).toUpperCase() : 'K'}
         </div>
         <div>
-          <b id="co">{S.co}</b>
+          <b id="co" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>{S.co}</span>
+            <span style={{ fontSize: '11px', opacity: 0.6 }}>✏️</span>
+          </b>
           <small id="sub">
             {S.done} kontrak · {rp(rate())}/jam{S.debt > 0 ? ' · tunggakan ' + rp(S.debt) : ''} · 🏆 {unlockedPc}/{PC.length}
           </small>

@@ -12,6 +12,7 @@ import TeamWindow from './components/TeamWindow.jsx';
 import NotificationsWindow from './components/NotificationsWindow.jsx';
 import SettingsWindow from './components/SettingsWindow.jsx';
 import AuthModal from './components/AuthModal.jsx';
+import ProfileModal from './components/ProfileModal.jsx';
 import IntroScreen from './components/IntroScreen.jsx';
 
 
@@ -106,7 +107,10 @@ export default function App() {
 
       {!showIntro && (
         <>
-          <TopBar onOpenAuth={() => toggleWin('auth')} />
+          <TopBar
+            onOpenAuth={() => toggleWin('auth')}
+            onOpenProfile={() => toggleWin('prof')}
+          />
           <SideMenu
             openWin={openWin}
             toggleWin={toggleWin}
@@ -137,6 +141,12 @@ export default function App() {
           {openWin === 'tm' && <TeamWindow onClose={() => toggleWin('')} />}
           {openWin === 'lg' && <NotificationsWindow onClose={() => toggleWin('')} />}
           {openWin === 'auth' && <AuthModal onClose={() => toggleWin('')} />}
+          {openWin === 'prof' && (
+            <ProfileModal
+              onClose={() => toggleWin('')}
+              onOpenAuth={() => toggleWin('auth')}
+            />
+          )}
           {openWin === 'st' && (
             <SettingsWindow
               onClose={() => toggleWin('')}

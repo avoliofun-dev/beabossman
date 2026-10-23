@@ -61,6 +61,17 @@ export default function SideMenu({ openWin, toggleWin, unread, toggleUI, toggleF
       </button>
 
       <button
+        className={`glass${openWin === 'prof' ? ' active' : ''}`}
+        data-w="prof"
+        type="button"
+        aria-label="Profil Member & Studio"
+        onClick={() => handleToggle('prof')}
+      >
+        <Icon name="user" size={20} />
+        <span>Profil</span>
+      </button>
+
+      <button
         className={`glass${openWin === 'st' ? ' active' : ''}`}
         data-w="st"
         type="button"
