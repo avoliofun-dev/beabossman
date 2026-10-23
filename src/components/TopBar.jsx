@@ -53,11 +53,34 @@ export default function TopBar({ onOpenAuth }) {
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {!user && (
+          <button
+            type="button"
+            onClick={onOpenAuth}
+            style={{
+              padding: '3px 8px',
+              borderRadius: 'var(--r-full)',
+              background: 'var(--wn-subtle)',
+              color: 'var(--wn)',
+              border: '1px solid var(--wn)',
+              fontSize: '11px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+            title="Klik untuk Masuk dan Simpan ke Cloud Supabase"
+          >
+            <span>☁️</span>
+            <span>Simpan ke Cloud</span>
+          </button>
+        )}
         <button
           type="button"
           className="snd-btn"
           onClick={onOpenAuth}
-          title={user ? `Cloud Sync Aktif (${user.email})` : 'Akun & Cloud Sync Supabase'}
+          title={user ? `Cloud Sync Aktif (${user.email})` : 'Mode Tamu (Belum Login ke Supabase)'}
           aria-label="Akun & Cloud Sync Supabase"
           style={{ position: 'relative' }}
         >
